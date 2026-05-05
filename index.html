@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class Pass Pro - Admin Controls</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-messaging-compat.js"></script>
+
+    <style>
+        :root { --primary: #1a73e8; --danger: #d93025; --success: #1e8e3e; --bg: #f8f9fa; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); margin: 0; padding: 10px; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
+        th, td { border: 1px solid #eee; padding: 8px; text-align: center; }
+        th { background: #34495e; color: white; }
+        .std-name { font-weight: 800; color: #2c3e50; font-size: 16px; }
+        
+        button { cursor: pointer; border-radius: 4px; border: none; font-weight: bold; padding: 8px 15px; transition: 0.3s; }
+        .btn-out { background: var(--danger); color: white; }
+        .btn-in { background: var(--success); color: white; }
+        .btn-del { background: #555; color: white; font-size: 11px; padding: 5px 10px; }
+        .btn-blue { background: var(--primary); color: white; }
+        
+        .hidden { display: none; }
+        .card { background: #f1f3f4; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: left; border-left: 5px solid var(--primary); }
+        .high-alert { background: #fff0f0; color: #d93025; }
+        
+        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-right: 5px; }
+        #notify-bar { position: fixed; top: 10px; right: 10px; background: #333; color: white; padding: 12px; border-radius: 5px; display: none; z-index: 1000; }
+    </style>
+</head>
+<body>
+
+<div id="notify-bar"></div>
+
+<div class="container">
+    <div id="login-section">
+        <h2 style="color:var(--primary)">Class Pass Login</h2>
+        <input type="password" id="pass-input" placeholder="Enter ID (Admin or Class)">
+        <button class="btn-blue" onclick="doLogin()">Login</button>
+    </div>
+
+    <div id="admin-panel" class="hidden">
+        <div class="card" style="display: flex; gap: 10px; align-items: center; justify-content: space-between;">
+            <div>
+                <button onclick="view('list')">Students List</button>
+                <button onclick="view('logs')">Time Analytics</button>
+                <button onclick="downloadCSV()" style="background:#f39c12; color:white;">Export Excel</button>
+            </div>
+            <button onclick="logout()" style="background:#666; color:white;">Logout</button>
+        </div>
+        <div id="admin-display"></div>
+    </div>
+
+    <div id="class-panel" class="hidden">
+        <div style="display:flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin:5px">Class Dashboard</h3>
+            <button onclick="logout()" style="font-size:12px; background:#666; color:white;">Logout</button>
+        </div>
+        <table>
+            <thead><tr><th>Roll No</th><th>Student Name</th><th>Action</th></tr></thead>
+            <tbody id="class-rows"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // --- ਆਪਣੀ Firebase Config ਇੱਥੇ ਭਰੋ ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyCjqb8BE0BBxu6o4MVUC-fbNSO4o7hr4Us",
+        authDomain: "class-pass-bdf84.firebaseapp.com",
+        databaseURL: "https://class-pass-bdf84-default-rtdb.asia-southeast1.firebasedatabase.app/",
+        projectId: "class-pass-bdf84",
+        storageBucket: "class-pass-bdf84.firebasestorage.app",
+        messagingSenderId: "536916373219",
+        appId: "1:536916373219:web:59a9035999cc6684f6dfd6"
+
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function doLogin() {
+        const id = document.getElementById('pass-input').value;
+        if(id === "ADMIN123") { localStorage.setItem('user', 'ADMIN'); location.reload(); }
+        else {
+            db.ref('config/classID').once('value', s => {
+                const classID = s.val() || "CLASS10"; // Default ਜੇ ਕੁਝ ਨਾ ਹੋਵੇ
+                if(id === classID) { localStorage.setItem('user', 'CLASS'); location.reload(); }
+                else alert("Invalid ID! Please check with Admin.");
+            });
+        }
+    }
+
+    function logout() { localStorage.removeItem('user'); location.reload(); }
+
+    window.onload = () => {
+        const user = localStorage.getItem('user');
+        if(user === 'ADMIN') {
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('admin-panel').classList.remove('hidden');
+            view('logs');
+        } else if(user === 'CLASS') {
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('class-panel').classList.remove('hidden');
+            renderClass();
+        }
+    };
+
+    function renderClass() {
+        db.ref('students').on('value', s => {
+            let h = '';
+            s.forEach(c => {
+                const v = c.val();
+                const bCls = v.status === 'IN' ? 'btn-out' : 'btn-in';
+                const bTxt = v.status === 'IN' ? 'Out' : 'In';
+                h += `<tr><td>${v.roll}</td><td class="std-name">${v.name}</td>
+                <td><button class="${bCls}" onclick="toggleStatus('${c.key}','${v.status}','${v.name}','${v.roll}')">${bTxt}</button></td></tr>`;
+            });
+            document.getElementById('class-rows').innerHTML = h;
+        });
+    }
+
+    function toggleStatus(key, status, name, roll) {
+        const next = status === 'IN' ? 'OUT' : 'IN';
+        const now = Date.now();
+        db.ref('students/' + key).update({ status: next, lastChange: now });
+        db.ref('logs').push({ name, roll, action: next, timestamp: now, timeStr: new Date().toLocaleTimeString() });
+        if(next === 'OUT') db.ref('alerts').set({ msg: name + " is Out", t: now });
+    }
+
+    function view(mode) {
+        const area = document.getElementById('admin-display');
+        if(mode === 'list') {
+            area.innerHTML = `
+            <div class="card">
+                <h4>Class ID Settings</h4>
+                <input id="new-class-id" placeholder="Enter New Class ID">
+                <button class="btn-blue" onclick="updateClassID()">Update ID</button>
+                <p style="font-size:12px; color:#666; margin-top:5px;">Current Class ID: <b id="display-id">Loading...</b></p>
+            </div>
+            <h4>Add New Student</h4>
+            <div class="card">
+                <input id="nr" placeholder="Roll" style="width:60px"> 
+                <input id="nn" placeholder="Student Name"> 
+                <button class="btn-blue" onclick="addS()">Add Student</button>
+            </div>
+            <table id="list-t"><thead><tr><th>Roll</th><th>Name</th><th>Action</th></tr></thead><tbody id="list-b"></tbody></table>`;
+            
+            db.ref('config/classID').on('value', s => { document.getElementById('display-id').innerText = s.val() || "Not Set"; });
+
+            db.ref('students').on('value', s => {
+                let h = '';
+                s.forEach(c => {
+                    h += `<tr><td>${c.val().roll}</td><td class="std-name">${c.val().name}</td>
+                    <td><button class="btn-del" onclick="db.ref('students/${c.key}').remove()">Delete</button></td></tr>`;
+                });
+                document.getElementById('list-b').innerHTML = h;
+            });
+        } else {
+            area.innerHTML = `<h4>Out Time Analytics (Students ranked by duration)</h4><div id="analytics-table"></div>`;
+            db.ref('logs').on('value', s => {
+                let logs = []; s.forEach(c => logs.push(c.val()));
+                let summary = {};
+                logs.forEach((l) => {
+                    if(!summary[l.roll]) summary[l.roll] = { name: l.name, totalMs: 0, lastOut: null };
+                    if(l.action === 'OUT') summary[l.roll].lastOut = l.timestamp;
+                    else if(l.action === 'IN' && summary[l.roll].lastOut) {
+                        summary[l.roll].totalMs += (l.timestamp - summary[l.roll].lastOut);
+                        summary[l.roll].lastOut = null;
+                    }
+                });
+                let sorted = Object.values(summary).sort((a,b) => b.totalMs - a.totalMs);
+                let h = `<table><thead><tr><th>Rank</th><th>Student Name</th><th>Total Out Time</th></tr></thead><tbody>`;
+                sorted.forEach((st, i) => {
+                    let mins = (st.totalMs / 60000).toFixed(1);
+                    let rowCls = i === 0 && mins > 0 ? 'high-alert' : '';
+                    h += `<tr class="${rowCls}"><td>${i+1}</td><td class="std-name">${st.name}</td><td>${mins} min</td></tr>`;
+                });
+                document.getElementById('analytics-table').innerHTML = h + `</tbody></table>`;
+            });
+        }
+    }
+
+    function updateClassID() {
+        const nid = document.getElementById('new-class-id').value;
+        if(nid) {
+            db.ref('config/classID').set(nid);
+            alert("Class ID updated successfully!");
+        }
+    }
+
+    function addS() {
+        const r = document.getElementById('nr').value;
+        const n = document.getElementById('nn').value;
+        if(r && n) db.ref('students').push({ roll: r, name: n, status: 'IN', lastChange: Date.now() });
+    }
+
+    function downloadCSV() {
+        db.ref('logs').once('value', s => {
+            let csv = "Time,Roll,Name,Action\n";
+            s.forEach(c => { const v = c.val(); csv += `${v.timeStr},${v.roll},${v.name},${v.action}\n`; });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'Class_Logs.csv'; a.click();
+        });
+    }
+
+    db.ref('alerts').on('value', s => {
+        const d = s.val();
+        if(d && (Date.now() - d.t < 5000)) {
+            const b = document.getElementById('notify-bar');
+            b.innerHTML = "🔔 " + d.msg;
+            b.style.display = 'block';
+            setTimeout(() => b.style.display='none', 5000);
+        }
+    });
+// ਨੋਟੀਫਿਕੇਸ਼ਨ ਸੈੱਟਅੱਪ
+const messaging = firebase.messaging();
+
+function requestPermission() {
+    Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+            // ਏਥੇ ਆਪਣੀ ਜਨਰੇਟ ਕੀਤੀ ਹੋਈ Key ਪੇਸਟ ਕਰੋ
+            messaging.getToken({ 
+                vapidKey: 'BJWwvO98z1vOnxXJKKA_9JPPU07MWVa8LNB-ejarhI6QCxSfc2gWGDwho3ttd48JrBYJHN0ZQvfIhBlfPHRT3mI' 
+            })
+            .then((currentToken) => {
+                if (currentToken) {
+                    console.log("Token generated:", currentToken);
+                }
+            });
+        }
+    });
+}
+
+// ਜੇਕਰ ਐਡਮਿਨ ਲੋਗਿਨ ਹੈ ਤਾਂ ਇਜਾਜ਼ਤ ਮੰਗੋ
+if (localStorage.getItem('user') === 'ADMIN') {
+    requestPermission();
+}
+
+</script>
+</body>
+</html>
