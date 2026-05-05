@@ -3,36 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Class Pass Pro - Advanced Analytics</title>
+    <title>Class Pass Pro - Date Filter Fixed</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-messaging-compat.js"></script>
-
     <style>
-        :root { --primary: #1a73e8; --danger: #d93025; --success: #1e8e3e; --bg: #f8f9fa; --dark: #202124; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: var(--dark); }
-        .container { max-width: 1100px; margin: auto; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        
-        table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 15px; background: white; }
-        th, td { border: 1px solid #e0e0e0; padding: 12px 8px; text-align: center; }
-        th { background: #3c4043; color: white; position: sticky; top: 0; }
-        tr:nth-child(even) { background-color: #f1f3f4; }
-        .std-name { font-weight: bold; color: #1a73e8; font-size: 16px; }
-        
-        .rank-badge { display: inline-block; width: 25px; height: 25px; line-height: 25px; border-radius: 50%; background: #5f6368; color: white; font-weight: bold; }
-        .rank-1 { background: #d93025; transform: scale(1.1); } /* ਸਭ ਤੋਂ ਉੱਪਰ ਵਾਲਾ ਰੰਗ */
-        
-        button { cursor: pointer; border-radius: 6px; border: none; font-weight: bold; padding: 10px 20px; transition: 0.3s; }
+        :root { --primary: #1a73e8; --danger: #d93025; --bg: #f8f9fa; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .card { background: #fff; padding: 15px; border-radius: 8px; border-left: 5px solid var(--primary); margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
+        th { background: #343a40; color: white; }
+        .std-name { font-weight: bold; color: #1a73e8; }
+        button { cursor: pointer; border-radius: 5px; border: none; font-weight: bold; padding: 10px 15px; }
         .btn-blue { background: var(--primary); color: white; }
-        .btn-orange { background: #f39c12; color: white; }
         .btn-red { background: var(--danger); color: white; }
-        
-        .card { background: #ffffff; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #dadce0; border-left: 6px solid var(--primary); }
-        .filter-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px; }
-        input { padding: 10px; border: 1px solid #dadce0; border-radius: 4px; font-size: 14px; }
-        
+        .btn-excel { background: #1e8e3e; color: white; }
+        input, select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin: 5px; }
         .hidden { display: none; }
-        #notify-bar { position: fixed; top: 20px; right: 20px; background: #202124; color: white; padding: 15px 25px; border-radius: 8px; display: none; z-index: 1000; box-shadow: 0 5px 20px rgba(0,0,0,0.3); border-left: 5px solid #d93025; font-weight: bold; }
+        #notify-bar { position: fixed; top: 10px; right: 10px; background: #202124; color: white; padding: 15px; border-radius: 8px; display: none; z-index: 1000; border-left: 5px solid #d93025; }
     </style>
 </head>
 <body>
@@ -41,31 +31,32 @@
 
 <div class="container">
     <div id="login-section">
-        <h2 style="color:var(--primary); text-align:center;">Class Pass Pro Login</h2>
+        <h2 style="text-align:center;">Class Pass Login</h2>
         <div style="max-width:300px; margin:auto; display:flex; flex-direction:column; gap:10px;">
-            <input type="password" id="pass-input" placeholder="Enter Admin/Class ID">
+            <input type="password" id="pass-input" placeholder="Password">
             <button class="btn-blue" onclick="doLogin()">Login</button>
         </div>
     </div>
 
     <div id="admin-panel" class="hidden">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
-            <div>
-                <button class="btn-blue" onclick="view('logs')">Analytics (Live)</button>
-                <button style="background:#5f6368; color:white" onclick="view('list')">Manage Students</button>
-            </div>
-            <button class="btn-red" onclick="logout()" style="padding:5px 15px">Logout</button>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>Admin Panel</h3>
+            <button class="btn-red" onclick="logout()">Logout</button>
+        </div>
+        <div style="margin-bottom:15px;">
+            <button class="btn-blue" onclick="view('logs')">Live Analytics (ਡੇਲੀ ਡਾਟਾ)</button>
+            <button style="background:#555; color:white" onclick="view('list')">Settings & Students</button>
         </div>
         <div id="admin-display"></div>
     </div>
 
     <div id="class-panel" class="hidden">
-        <div style="display:flex; justify-content: space-between; align-items: center; background:#e8f0fe; padding:10px; border-radius:8px;">
-            <h3 style="margin:0; color:#1967d2;">Dashboard (Classroom Mode)</h3>
-            <button onclick="logout()" class="btn-red" style="padding:5px 15px">Logout</button>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>Classroom Dashboard</h3>
+            <button class="btn-red" onclick="logout()">Logout</button>
         </div>
         <table>
-            <thead><tr><th>Roll No</th><th>Student Name</th><th>Action</th></tr></thead>
+            <thead><tr><th>Roll No</th><th>Name</th><th>Action</th></tr></thead>
             <tbody id="class-rows"></tbody>
         </table>
     </div>
@@ -116,10 +107,8 @@
             let h = '';
             s.forEach(c => {
                 const v = c.val();
-                const bCls = v.status === 'IN' ? 'btn-red' : 'btn-blue';
-                const bTxt = v.status === 'IN' ? 'Go Out (ਬਾਹਰ)' : 'Come In (ਅੰਦਰ)';
                 h += `<tr><td>${v.roll}</td><td class="std-name">${v.name}</td>
-                <td><button class="${bCls}" onclick="toggleStatus('${c.key}','${v.status}','${v.name}','${v.roll}')">${bTxt}</button></td></tr>`;
+                <td><button class="${v.status === 'IN' ? 'btn-red' : 'btn-blue'}" onclick="toggleStatus('${c.key}','${v.status}','${v.name}','${v.roll}')">${v.status === 'IN' ? 'OUT' : 'IN'}</button></td></tr>`;
             });
             document.getElementById('class-rows').innerHTML = h;
         });
@@ -130,130 +119,129 @@
         const now = Date.now();
         db.ref('students/' + key).update({ status: next, lastChange: now });
         db.ref('logs').push({ name, roll, action: next, timestamp: now, timeStr: new Date().toLocaleTimeString() });
-        if(next === 'OUT') {
-            db.ref('alerts').set({ msg: name + " ਕਲਾਸ ਤੋਂ ਬਾਹਰ ਗਿਆ ਹੈ!", t: now });
-        }
-    }
-
-    function formatTime(ms) {
-        let totalSecs = Math.floor(ms / 1000);
-        let mins = Math.floor(totalSecs / 60);
-        let secs = totalSecs % 60;
-        return `${mins} ਮਿੰਟ ${secs} ਸਕਿੰਟ`;
+        if(next === 'OUT') db.ref('alerts').set({ msg: "🚨 " + name + " ਬਾਹਰ ਗਿਆ!", t: now });
     }
 
     function view(mode) {
         const area = document.getElementById('admin-display');
         if(mode === 'list') {
             area.innerHTML = `
-            <div class="card">
-                <h4>Add Student / Settings</h4>
-                <div class="filter-box">
-                    <input id="nr" placeholder="Roll No" style="width:80px">
-                    <input id="nn" placeholder="Student Name">
-                    <button class="btn-blue" onclick="addS()">Add Student</button>
-                </div>
-            </div>
+            <div class="card"><h4>Update Class ID</h4><input id="new-cid" placeholder="New ID"><button class="btn-blue" onclick="updateCID()">Update</button></div>
+            <div class="card"><h4>Add Student</h4><input id="nr" placeholder="Roll" style="width:60px"><input id="nn" placeholder="Name"><button class="btn-blue" onclick="addS()">Add</button></div>
             <table id="list-t"><thead><tr><th>Roll</th><th>Name</th><th>Action</th></tr></thead><tbody id="list-b"></tbody></table>`;
             db.ref('students').on('value', s => {
                 let h = '';
                 s.forEach(c => {
-                    h += `<tr><td>${c.val().roll}</td><td class="std-name">${c.val().name}</td>
-                    <td><button style="color:red" onclick="db.ref('students/${c.key}').remove()">Delete</button></td></tr>`;
+                    h += `<tr><td>${c.val().roll}</td><td>${c.val().name}</td><td><button onclick="db.ref('students/${c.key}').remove()">Delete</button></td></tr>`;
                 });
                 document.getElementById('list-b').innerHTML = h;
             });
         } else {
             area.innerHTML = `
             <div class="card">
-                <h4>ਰਿਪੋਰਟ ਅਤੇ ਫਿਲਟਰ (Advanced Excel)</h4>
-                <div class="filter-box">
-                    <input type="date" id="filter-date">
-                    <input type="text" id="filter-name" placeholder="ਨਾਮ ਜਾਂ ਰੋਲ ਨੰਬਰ">
-                    <button class="btn-orange" onclick="downloadAdvancedCSV()">Export Detailed Excel</button>
-                </div>
+                <h4>ਤਰੀਕ ਮੁਤਾਬਕ ਲਾਈਵ ਰਿਪੋਰਟ ਅਤੇ Excel</h4>
+                <input type="date" id="live-date-filter" onchange="renderAnalytics()">
+                <select id="rep-student"><option value="ALL">All Students</option></select>
+                <button class="btn-excel" onclick="downloadCSV()">Download Excel</button>
             </div>
-            <div id="analytics-table">ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ...</div>`;
+            <div id="analytics-box">ਤਰੀਕ ਚੁਣੋ...</div>`;
+            
+            // ਅੱਜ ਦੀ ਤਰੀਕ ਆਟੋ-ਸੈੱਟ ਕਰਨਾ
+            document.getElementById('live-date-filter').valueAsDate = new Date();
+
+            db.ref('students').once('value', s => {
+                const sel = document.getElementById('rep-student');
+                s.forEach(c => {
+                    let opt = document.createElement('option');
+                    opt.value = c.val().roll; opt.text = c.val().name; sel.add(opt);
+                });
+            });
             renderAnalytics();
         }
     }
 
     function renderAnalytics() {
+        const selectedDate = document.getElementById('live-date-filter').value; // YYYY-MM-DD
+        if(!selectedDate) return;
+
         db.ref('logs').on('value', s => {
-            let logs = []; s.forEach(c => logs.push(c.val()));
-            let summary = {};
+            let logs = []; 
+            s.forEach(child => { 
+                const val = child.val();
+                const logDate = new Date(val.timestamp).toISOString().split('T')[0];
+                if(logDate === selectedDate) logs.push(val); 
+            });
             
+            let summary = {};
             logs.forEach(l => {
-                if(!summary[l.roll]) summary[l.roll] = { name: l.name, roll: l.roll, totalMs: 0, lastOut: null };
-                if(l.action === 'OUT') summary[l.roll].lastOut = l.timestamp;
-                else if(l.action === 'IN' && summary[l.roll].lastOut) {
-                    summary[l.roll].totalMs += (l.timestamp - summary[l.roll].lastOut);
-                    summary[l.roll].lastOut = null;
+                let id = l.roll; 
+                if(!summary[id]) summary[id] = { name: l.name, roll: l.roll, totalMs: 0, lastOut: null };
+                if(l.action === 'OUT') summary[id].lastOut = l.timestamp;
+                else if(l.action === 'IN' && summary[id].lastOut) {
+                    summary[id].totalMs += (l.timestamp - summary[id].lastOut);
+                    summary[id].lastOut = null;
                 }
             });
 
             let sorted = Object.values(summary).sort((a,b) => b.totalMs - a.totalMs);
-            let h = `<table><thead><tr><th>Rank</th><th>Name</th><th>Total Duration (ਬਾਹਰ ਰਹਿਣ ਦਾ ਸਮਾਂ)</th></tr></thead><tbody>`;
+            let h = `<table><thead><tr><th>Rank</th><th>Name</th><th>Time Out (Selected Date)</th></tr></thead><tbody>`;
+            if(sorted.length === 0) h += `<tr><td colspan="3">ਇਸ ਤਰੀਕ ਦਾ ਕੋਈ ਡਾਟਾ ਨਹੀਂ ਹੈ।</td></tr>`;
             sorted.forEach((st, i) => {
-                const rankCls = i === 0 ? 'rank-1' : '';
-                h += `<tr>
-                    <td><span class="rank-badge ${rankCls}">${i+1}</span></td>
-                    <td class="std-name">${st.name}</td>
-                    <td style="font-weight:bold; color:#d93025">${formatTime(st.totalMs)}</td>
-                </tr>`;
+                let m = Math.floor(st.totalMs / 60000);
+                let s = Math.floor((st.totalMs % 60000) / 1000);
+                h += `<tr><td>${i+1}</td><td class="std-name">${st.name}</td><td><b>${m}m ${s}s</b></td></tr>`;
             });
-            document.getElementById('analytics-table').innerHTML = h + `</tbody></table>`;
+            document.getElementById('analytics-box').innerHTML = h + '</tbody></table>';
         });
+    }
+
+    function downloadCSV() {
+        const fDate = document.getElementById('live-date-filter').value;
+        const fRoll = document.getElementById('rep-student').value;
+        
+        db.ref('logs').once('value', s => {
+            let csv = "\ufeffDate,Time,Roll,Name,Action\n";
+            let hasData = false;
+            s.forEach(c => {
+                const v = c.val();
+                const logDate = new Date(v.timestamp).toISOString().split('T')[0];
+                if((!fDate || logDate === fDate) && (fRoll === 'ALL' || v.roll.toString() === fRoll)) {
+                    csv += `${new Date(v.timestamp).toLocaleDateString()},${v.timeStr},${v.roll},${v.name},${v.action}\n`;
+                    hasData = true;
+                }
+            });
+            
+            if(!hasData) { alert("ਇਸ ਫਿਲਟਰ ਲਈ ਕੋਈ ਡਾਟਾ ਨਹੀਂ ਮਿਲਿਆ!"); return; }
+            
+            // ਡਾਊਨਲੋਡ ਕਰਨ ਦਾ ਸਭ ਤੋਂ ਪੱਕਾ ਤਰੀਕਾ
+            const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csv);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Class_Report_${fDate || 'Full'}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    }
+
+    function updateCID() {
+        const val = document.getElementById('new-cid').value;
+        if(val) db.ref('config').update({ classID: val }).then(() => alert("ID Updated!"));
     }
 
     function addS() {
-        const r = document.getElementById('nr').value;
-        const n = document.getElementById('nn').value;
+        const r = document.getElementById('nr').value; const n = document.getElementById('nn').value;
         if(r && n) db.ref('students').push({ roll: r, name: n, status: 'IN', lastChange: Date.now() });
     }
 
-    async function downloadAdvancedCSV() {
-        const fDate = document.getElementById('filter-date').value;
-        const fName = document.getElementById('filter-name').value.toLowerCase();
-
-        db.ref('logs').once('value', s => {
-            let csv = "\ufeffDate,Time,Roll No,Student Name,Action\n";
-            s.forEach(c => {
-                const v = c.val();
-                const d = new Date(v.timestamp).toISOString().split('T')[0];
-                if((!fDate || d === fDate) && (!fName || v.name.toLowerCase().includes(fName) || v.roll.toString().includes(fName))) {
-                    csv += `${new Date(v.timestamp).toLocaleDateString()},${v.timeStr},${v.roll},${v.name},${v.action}\n`;
-                }
-            });
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = 'Detailed_Class_Report.csv'; a.click();
-        });
-    }
-
-    // Live Alert System
     db.ref('alerts').on('value', s => {
         const d = s.val();
-        if(d && (Date.now() - d.t < 10000)) {
+        if(d && (Date.now() - d.t < 15000)) {
             const b = document.getElementById('notify-bar');
-            b.innerHTML = "🚨 " + d.msg;
-            b.style.display = 'block';
-            setTimeout(() => b.style.display='none', 8000);
+            b.innerHTML = d.msg; b.style.display = 'block';
+            setTimeout(() => b.style.display = 'none', 12000);
         }
     });
-
-    // Notification Permission
-    const messaging = firebase.messaging();
-    function requestPermission() {
-        Notification.requestPermission().then(p => {
-            if (p === 'granted') {
-                messaging.getToken({ vapidKey: 'BJWwvO98z1vOnxXJKKA_9JPPU07MWVa8LNB-ejarhI6QCxSfc2gWGDwho3ttd48JrBYJHN0ZQvfIhBlfPHRT3mI' })
-                .then(token => console.log("Token Ready"));
-            }
-        });
-    }
-    if (localStorage.getItem('user') === 'ADMIN') requestPermission();
 </script>
 </body>
 </html>
