@@ -3,57 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Class Pass Pro - Fully Fixed</title>
+    <title>Class Pass - Daily Simple</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-messaging-compat.js"></script>
     <style>
-        :root { --primary: #1a73e8; --danger: #d93025; --bg: #f8f9fa; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; }
-        .container { max-width: 1100px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .card { background: #fff; padding: 15px; border-radius: 8px; border-left: 5px solid var(--primary); margin-bottom: 15px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
-        th { background: #343a40; color: white; }
-        .std-name { font-weight: bold; color: #1a73e8; }
-        button { cursor: pointer; border-radius: 5px; border: none; font-weight: bold; padding: 10px 15px; }
-        .btn-blue { background: var(--primary); color: white; }
-        .btn-red { background: var(--danger); color: white; }
-        .btn-excel { background: #1e8e3e; color: white; }
-        input, select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin: 5px; }
+        body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 10px; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .card { border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th { background: #333; color: white; }
+        .btn { padding: 10px; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; margin: 2px; }
+        .btn-blue { background: #1a73e8; color: white; }
+        .btn-red { background: #d93025; color: white; }
+        .btn-green { background: #1e8e3e; color: white; }
         .hidden { display: none; }
+        #alert-bar { position: fixed; top: 0; left: 0; width: 100%; background: #d93025; color: white; text-align: center; padding: 15px; display: none; font-size: 22px; z-index: 1000; font-weight: bold; }
     </style>
 </head>
 <body>
 
+<audio id="alert-sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+<div id="alert-bar"></div>
+
 <div class="container">
     <div id="login-section">
-        <h2 style="text-align:center;">Class Pass Login</h2>
-        <div style="max-width:300px; margin:auto; display:flex; flex-direction:column; gap:10px;">
-            <input type="password" id="pass-input" placeholder="Password">
-            <button class="btn-blue" onclick="doLogin()">Login</button>
-        </div>
+        <h2>Login</h2>
+        <input type="password" id="pass-input" placeholder="Password">
+        <button class="btn btn-blue" onclick="doLogin()">Login</button>
     </div>
 
     <div id="admin-panel" class="hidden">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h3>Admin Dashboard</h3>
-            <button class="btn-red" onclick="logout()">Logout</button>
+            <h3>Admin Panel (Today's Data)</h3>
+            <button class="btn btn-red" onclick="logout()">Logout</button>
         </div>
-        <div style="margin-bottom:15px;">
-            <button class="btn-blue" onclick="view('logs')">Live Analytics</button>
-            <button style="background:#555; color:white" onclick="view('list')">Settings & Students</button>
+        
+        <div class="card">
+            <button class="btn btn-green" onclick="downloadTodayCSV()">Download Today's Excel</button>
+            <div id="analytics-box"></div>
         </div>
-        <div id="admin-display"></div>
+
+        <div class="card">
+            <h4>Manage Students</h4>
+            <input id="nr" placeholder="Roll" style="width:50px">
+            <input id="nn" placeholder="Name">
+            <button class="btn btn-blue" onclick="addS()">Add</button>
+            <table id="list-table">
+                <thead><tr><th>Roll</th><th>Name</th><th>Action</th></tr></thead>
+                <tbody id="list-body"></tbody>
+            </table>
+        </div>
     </div>
 
     <div id="class-panel" class="hidden">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; justify-content:space-between;">
             <h3>Classroom Dashboard</h3>
-            <button class="btn-red" onclick="logout()">Logout</button>
+            <button class="btn btn-red" onclick="logout()">Logout</button>
         </div>
-        <table id="class-table">
-            <thead><tr><th>Roll No</th><th>Name</th><th>Action</th></tr></thead>
+        <table>
+            <thead><tr><th>Roll</th><th>Name</th><th>Action</th></tr></thead>
             <tbody id="class-rows"></tbody>
         </table>
     </div>
@@ -76,12 +85,7 @@
     function doLogin() {
         const id = document.getElementById('pass-input').value;
         if(id === "ADMIN123") { localStorage.setItem('user', 'ADMIN'); location.reload(); }
-        else {
-            db.ref('config/classID').once('value', s => {
-                if(id === (s.val() || "CLASS10")) { localStorage.setItem('user', 'CLASS'); location.reload(); }
-                else alert("Invalid ID!");
-            });
-        }
+        else { localStorage.setItem('user', 'CLASS'); location.reload(); }
     }
 
     function logout() { localStorage.removeItem('user'); location.reload(); }
@@ -91,7 +95,7 @@
         if(user === 'ADMIN') {
             document.getElementById('login-section').classList.add('hidden');
             document.getElementById('admin-panel').classList.remove('hidden');
-            view('logs');
+            renderAdmin();
         } else if(user === 'CLASS') {
             document.getElementById('login-section').classList.add('hidden');
             document.getElementById('class-panel').classList.remove('hidden');
@@ -104,8 +108,8 @@
             let h = '';
             s.forEach(c => {
                 const v = c.val();
-                h += `<tr><td>${v.roll}</td><td class="std-name">${v.name}</td>
-                <td><button class="${v.status === 'IN' ? 'btn-red' : 'btn-blue'}" onclick="toggleStatus('${c.key}','${v.status}','${v.name}','${v.roll}')">${v.status === 'IN' ? 'OUT' : 'IN'}</button></td></tr>`;
+                h += `<tr><td>${v.roll}</td><td><b>${v.name}</b></td>
+                <td><button class="btn ${v.status === 'IN' ? 'btn-red' : 'btn-blue'}" onclick="toggleStatus('${c.key}','${v.status}','${v.name}','${v.roll}')">${v.status === 'IN' ? 'OUT' : 'IN'}</button></td></tr>`;
             });
             document.getElementById('class-rows').innerHTML = h;
         });
@@ -114,120 +118,77 @@
     function toggleStatus(key, status, name, roll) {
         const next = status === 'IN' ? 'OUT' : 'IN';
         const now = Date.now();
-        db.ref('students/' + key).update({ status: next, lastChange: now });
+        db.ref('students/' + key).update({ status: next });
         db.ref('logs').push({ name, roll, action: next, timestamp: now, timeStr: new Date().toLocaleTimeString() });
+        if(next === 'OUT') db.ref('alerts').set({ msg: name + " is OUT", t: now });
     }
 
-    function view(mode) {
-        const area = document.getElementById('admin-display');
-        if(mode === 'list') {
-            area.innerHTML = `
-            <div class="card"><h4>Update Class ID</h4><input id="new-cid" placeholder="New ID"><button class="btn-blue" onclick="updateCID()">Update</button></div>
-            <div class="card"><h4>Add Student</h4><input id="nr" placeholder="Roll" style="width:60px"><input id="nn" placeholder="Name"><button class="btn-blue" onclick="addS()">Add</button></div>
-            <table id="list-t"><thead><tr><th>Roll</th><th>Name</th><th>Action</th></tr></thead><tbody id="list-b"></tbody></table>`;
-            db.ref('students').on('value', s => {
-                let h = '';
-                s.forEach(c => {
-                    h += `<tr><td>${c.val().roll}</td><td>${c.val().name}</td><td><button onclick="db.ref('students/${c.key}').remove()">Delete</button></td></tr>`;
-                });
-                document.getElementById('list-b').innerHTML = h;
+    function renderAdmin() {
+        // Student List
+        db.ref('students').on('value', s => {
+            let h = '';
+            s.forEach(c => {
+                h += `<tr><td>${c.val().roll}</td><td>${c.val().name}</td><td><button onclick="db.ref('students/${c.key}').remove()">Delete</button></td></tr>`;
             });
-        } else {
-            area.innerHTML = `
-            <div class="card">
-                <h4>ਤਰੀਕ ਮੁਤਾਬਕ ਰਿਪੋਰਟ</h4>
-                <input type="date" id="live-date-filter">
-                <select id="rep-student"><option value="ALL">All Students</option></select>
-                <button class="btn-blue" onclick="renderAnalytics()">ਡਾਟਾ ਦੇਖੋ (Show Data)</button>
-                <button class="btn-excel" onclick="downloadCSV()">Download Excel</button>
-            </div>
-            <div id="analytics-box">ਕਿਰਪਾ ਕਰਕੇ ਤਰੀਕ ਚੁਣ ਕੇ 'ਡਾਟਾ ਦੇਖੋ' 'ਤੇ ਕਲਿੱਕ ਕਰੋ।</div>`;
-            
-            // ਅੱਜ ਦੀ ਤਰੀਕ ਸੈੱਟ ਕਰਨਾ
-            let today = new Date().toISOString().split('T')[0];
-            document.getElementById('live-date-filter').value = today;
+            document.getElementById('list-body').innerHTML = h;
+        });
 
-            db.ref('students').once('value', s => {
-                const sel = document.getElementById('rep-student');
-                s.forEach(c => {
-                    let opt = document.createElement('option');
-                    opt.value = c.val().roll; opt.text = c.val().name; sel.add(opt);
-                });
-            });
-        }
-    }
-
-    function renderAnalytics() {
-        const selectedDate = document.getElementById('live-date-filter').value;
-        if(!selectedDate) { alert("ਤਰੀਕ ਚੁਣੋ"); return; }
-
-        db.ref('logs').once('value', s => {
+        // Today's Ranking
+        db.ref('logs').on('value', s => {
+            const today = new Date().toISOString().split('T')[0];
             let summary = {};
             s.forEach(child => {
-                const val = child.val();
-                const logDate = new Date(val.timestamp).toISOString().split('T')[0];
-                
-                if(logDate === selectedDate) {
-                    let id = val.roll;
-                    if(!summary[id]) summary[id] = { name: val.name, roll: val.roll, totalMs: 0, lastOut: null };
-                    if(val.action === 'OUT') summary[id].lastOut = val.timestamp;
-                    else if(val.action === 'IN' && summary[id].lastOut) {
-                        summary[id].totalMs += (val.timestamp - summary[id].lastOut);
-                        summary[id].lastOut = null;
-                    }
+                const v = child.val();
+                const logDate = new Date(v.timestamp).toISOString().split('T')[0];
+                if(logDate === today && v.action === 'OUT') {
+                    if(!summary[v.roll]) summary[v.roll] = { name: v.name, count: 0 };
+                    summary[v.roll].count += 1;
                 }
             });
-
-            let sorted = Object.values(summary).sort((a,b) => b.totalMs - a.totalMs);
-            let h = `<table><thead><tr><th>Rank</th><th>Name</th><th>Time Out</th></tr></thead><tbody>`;
-            if(sorted.length === 0) h += `<tr><td colspan="3">ਇਸ ਤਰੀਕ ਦਾ ਕੋਈ ਡਾਟਾ ਨਹੀਂ ਹੈ।</td></tr>`;
+            let sorted = Object.values(summary).sort((a,b) => b.count - a.count);
+            let h = '<h4>Today\'s Ranking (by Count)</h4><table><thead><tr><th>Rank</th><th>Name</th><th>Count</th></tr></thead><tbody>';
             sorted.forEach((st, i) => {
-                let m = Math.floor(st.totalMs / 60000);
-                let s = Math.floor((st.totalMs % 60000) / 1000);
-                h += `<tr><td>${i+1}</td><td class="std-name">${st.name}</td><td><b>${m}m ${s}s</b></td></tr>`;
+                h += `<tr><td>${i+1}</td><td>${st.name}</td><td><b>${st.count} times</b></td></tr>`;
             });
             document.getElementById('analytics-box').innerHTML = h + '</tbody></table>';
         });
     }
 
-    function downloadCSV() {
-        const fDate = document.getElementById('live-date-filter').value;
-        const fRoll = document.getElementById('rep-student').value;
-        
+    function downloadTodayCSV() {
+        const today = new Date().toISOString().split('T')[0];
         db.ref('logs').once('value', s => {
             let csv = "\ufeffDate,Time,Roll,Name,Action\n";
-            let hasData = false;
             s.forEach(c => {
                 const v = c.val();
                 const logDate = new Date(v.timestamp).toISOString().split('T')[0];
-                if((!fDate || logDate === fDate) && (fRoll === 'ALL' || v.roll.toString() === fRoll)) {
-                    csv += `${new Date(v.timestamp).toLocaleDateString()},${v.timeStr},${v.roll},${v.name},${v.action}\n`;
-                    hasData = true;
+                if(logDate === today) {
+                    csv += `${logDate},${v.timeStr},${v.roll},${v.name},${v.action}\n`;
                 }
             });
-            
-            if(!hasData) { alert("ਡਾਟਾ ਨਹੀਂ ਮਿਲਿਆ!"); return; }
-            
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
-            a.href = url;
-            a.download = `Class_Report_${fDate || 'All'}.csv`;
-            document.body.appendChild(a);
+            a.href = URL.createObjectURL(blob);
+            a.download = `Report_${today}.csv`;
             a.click();
-            document.body.removeChild(a);
         });
-    }
-
-    function updateCID() {
-        const val = document.getElementById('new-cid').value;
-        if(val) db.ref('config').update({ classID: val }).then(() => alert("Updated!"));
     }
 
     function addS() {
         const r = document.getElementById('nr').value; const n = document.getElementById('nn').value;
-        if(r && n) db.ref('students').push({ roll: r, name: n, status: 'IN', lastChange: Date.now() });
+        if(r && n) db.ref('students').push({ roll: r, name: n, status: 'IN' });
     }
+
+    // Alert Handling
+    db.ref('alerts').on('value', s => {
+        const d = s.val();
+        if(d && (Date.now() - d.t < 10000)) {
+            const bar = document.getElementById('alert-bar');
+            bar.innerHTML = "🚨 " + d.msg;
+            bar.style.display = 'block';
+            document.getElementById('alert-sound').play().catch(e => {});
+            setTimeout(() => { bar.style.display = 'none'; }, 8000);
+        }
+    });
 </script>
 </body>
 </html>
