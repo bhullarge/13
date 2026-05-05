@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Class Pass Pro - Date Filter Fixed</title>
+    <title>Class Pass Pro - Fully Fixed</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-messaging-compat.js"></script>
@@ -22,12 +22,9 @@
         .btn-excel { background: #1e8e3e; color: white; }
         input, select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin: 5px; }
         .hidden { display: none; }
-        #notify-bar { position: fixed; top: 10px; right: 10px; background: #202124; color: white; padding: 15px; border-radius: 8px; display: none; z-index: 1000; border-left: 5px solid #d93025; }
     </style>
 </head>
 <body>
-
-<div id="notify-bar"></div>
 
 <div class="container">
     <div id="login-section">
@@ -40,11 +37,11 @@
 
     <div id="admin-panel" class="hidden">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h3>Admin Panel</h3>
+            <h3>Admin Dashboard</h3>
             <button class="btn-red" onclick="logout()">Logout</button>
         </div>
         <div style="margin-bottom:15px;">
-            <button class="btn-blue" onclick="view('logs')">Live Analytics (ਡੇਲੀ ਡਾਟਾ)</button>
+            <button class="btn-blue" onclick="view('logs')">Live Analytics</button>
             <button style="background:#555; color:white" onclick="view('list')">Settings & Students</button>
         </div>
         <div id="admin-display"></div>
@@ -55,7 +52,7 @@
             <h3>Classroom Dashboard</h3>
             <button class="btn-red" onclick="logout()">Logout</button>
         </div>
-        <table>
+        <table id="class-table">
             <thead><tr><th>Roll No</th><th>Name</th><th>Action</th></tr></thead>
             <tbody id="class-rows"></tbody>
         </table>
@@ -119,7 +116,6 @@
         const now = Date.now();
         db.ref('students/' + key).update({ status: next, lastChange: now });
         db.ref('logs').push({ name, roll, action: next, timestamp: now, timeStr: new Date().toLocaleTimeString() });
-        if(next === 'OUT') db.ref('alerts').set({ msg: "🚨 " + name + " ਬਾਹਰ ਗਿਆ!", t: now });
     }
 
     function view(mode) {
@@ -139,15 +135,17 @@
         } else {
             area.innerHTML = `
             <div class="card">
-                <h4>ਤਰੀਕ ਮੁਤਾਬਕ ਲਾਈਵ ਰਿਪੋਰਟ ਅਤੇ Excel</h4>
-                <input type="date" id="live-date-filter" onchange="renderAnalytics()">
+                <h4>ਤਰੀਕ ਮੁਤਾਬਕ ਰਿਪੋਰਟ</h4>
+                <input type="date" id="live-date-filter">
                 <select id="rep-student"><option value="ALL">All Students</option></select>
+                <button class="btn-blue" onclick="renderAnalytics()">ਡਾਟਾ ਦੇਖੋ (Show Data)</button>
                 <button class="btn-excel" onclick="downloadCSV()">Download Excel</button>
             </div>
-            <div id="analytics-box">ਤਰੀਕ ਚੁਣੋ...</div>`;
+            <div id="analytics-box">ਕਿਰਪਾ ਕਰਕੇ ਤਰੀਕ ਚੁਣ ਕੇ 'ਡਾਟਾ ਦੇਖੋ' 'ਤੇ ਕਲਿੱਕ ਕਰੋ।</div>`;
             
-            // ਅੱਜ ਦੀ ਤਰੀਕ ਆਟੋ-ਸੈੱਟ ਕਰਨਾ
-            document.getElementById('live-date-filter').valueAsDate = new Date();
+            // ਅੱਜ ਦੀ ਤਰੀਕ ਸੈੱਟ ਕਰਨਾ
+            let today = new Date().toISOString().split('T')[0];
+            document.getElementById('live-date-filter').value = today;
 
             db.ref('students').once('value', s => {
                 const sel = document.getElementById('rep-student');
@@ -156,35 +154,32 @@
                     opt.value = c.val().roll; opt.text = c.val().name; sel.add(opt);
                 });
             });
-            renderAnalytics();
         }
     }
 
     function renderAnalytics() {
-        const selectedDate = document.getElementById('live-date-filter').value; // YYYY-MM-DD
-        if(!selectedDate) return;
+        const selectedDate = document.getElementById('live-date-filter').value;
+        if(!selectedDate) { alert("ਤਰੀਕ ਚੁਣੋ"); return; }
 
-        db.ref('logs').on('value', s => {
-            let logs = []; 
-            s.forEach(child => { 
+        db.ref('logs').once('value', s => {
+            let summary = {};
+            s.forEach(child => {
                 const val = child.val();
                 const logDate = new Date(val.timestamp).toISOString().split('T')[0];
-                if(logDate === selectedDate) logs.push(val); 
-            });
-            
-            let summary = {};
-            logs.forEach(l => {
-                let id = l.roll; 
-                if(!summary[id]) summary[id] = { name: l.name, roll: l.roll, totalMs: 0, lastOut: null };
-                if(l.action === 'OUT') summary[id].lastOut = l.timestamp;
-                else if(l.action === 'IN' && summary[id].lastOut) {
-                    summary[id].totalMs += (l.timestamp - summary[id].lastOut);
-                    summary[id].lastOut = null;
+                
+                if(logDate === selectedDate) {
+                    let id = val.roll;
+                    if(!summary[id]) summary[id] = { name: val.name, roll: val.roll, totalMs: 0, lastOut: null };
+                    if(val.action === 'OUT') summary[id].lastOut = val.timestamp;
+                    else if(val.action === 'IN' && summary[id].lastOut) {
+                        summary[id].totalMs += (val.timestamp - summary[id].lastOut);
+                        summary[id].lastOut = null;
+                    }
                 }
             });
 
             let sorted = Object.values(summary).sort((a,b) => b.totalMs - a.totalMs);
-            let h = `<table><thead><tr><th>Rank</th><th>Name</th><th>Time Out (Selected Date)</th></tr></thead><tbody>`;
+            let h = `<table><thead><tr><th>Rank</th><th>Name</th><th>Time Out</th></tr></thead><tbody>`;
             if(sorted.length === 0) h += `<tr><td colspan="3">ਇਸ ਤਰੀਕ ਦਾ ਕੋਈ ਡਾਟਾ ਨਹੀਂ ਹੈ।</td></tr>`;
             sorted.forEach((st, i) => {
                 let m = Math.floor(st.totalMs / 60000);
@@ -211,37 +206,28 @@
                 }
             });
             
-            if(!hasData) { alert("ਇਸ ਫਿਲਟਰ ਲਈ ਕੋਈ ਡਾਟਾ ਨਹੀਂ ਮਿਲਿਆ!"); return; }
+            if(!hasData) { alert("ਡਾਟਾ ਨਹੀਂ ਮਿਲਿਆ!"); return; }
             
-            // ਡਾਊਨਲੋਡ ਕਰਨ ਦਾ ਸਭ ਤੋਂ ਪੱਕਾ ਤਰੀਕਾ
-            const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csv);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `Class_Report_${fDate || 'Full'}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `Class_Report_${fDate || 'All'}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         });
     }
 
     function updateCID() {
         const val = document.getElementById('new-cid').value;
-        if(val) db.ref('config').update({ classID: val }).then(() => alert("ID Updated!"));
+        if(val) db.ref('config').update({ classID: val }).then(() => alert("Updated!"));
     }
 
     function addS() {
         const r = document.getElementById('nr').value; const n = document.getElementById('nn').value;
         if(r && n) db.ref('students').push({ roll: r, name: n, status: 'IN', lastChange: Date.now() });
     }
-
-    db.ref('alerts').on('value', s => {
-        const d = s.val();
-        if(d && (Date.now() - d.t < 15000)) {
-            const b = document.getElementById('notify-bar');
-            b.innerHTML = d.msg; b.style.display = 'block';
-            setTimeout(() => b.style.display = 'none', 12000);
-        }
-    });
 </script>
 </body>
 </html>
