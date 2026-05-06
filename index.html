@@ -3,63 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Class Pass - Daily Simple</title>
+    <title>Class Pass - Notification Fixed</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 10px; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        .card { border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 5px; }
+        :root { --primary: #4e73df; --success: #1cc88a; --danger: #e74a3b; --warning: #f6c23e; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f8f9fc; margin: 0; padding: 10px; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-top: 10px solid var(--primary); margin-top: 20px; }
+        .card { background: #fff; border-radius: 15px; padding: 15px; margin-bottom: 20px; border: 1px solid #e3e6f0; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
-        th { background: #333; color: white; }
-        .btn { padding: 10px; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; margin: 2px; }
-        .btn-blue { background: #1a73e8; color: white; }
-        .btn-red { background: #d93025; color: white; }
-        .btn-green { background: #1e8e3e; color: white; }
-        .hidden { display: none; }
-        #alert-bar { position: fixed; top: 0; left: 0; width: 100%; background: #d93025; color: white; text-align: center; padding: 15px; display: none; font-size: 22px; z-index: 1000; font-weight: bold; }
+        th, td { padding: 12px; text-align: center; border-bottom: 1px solid #f1f1f1; }
+        th { background: var(--primary); color: white; border-radius: 5px; }
+        .btn { padding: 12px 20px; cursor: pointer; border: none; border-radius: 10px; font-weight: bold; width: 100%; margin-bottom: 10px; transition: 0.3s; }
+        .btn-blue { background: var(--primary); color: white; }
+        .btn-red { background: var(--danger); color: white; }
+        .btn-green { background: var(--success); color: white; }
+        .btn-orange { background: var(--warning); color: #333; }
+        input { width: 92%; padding: 12px; margin-bottom: 15px; border: 2px solid #ddd; border-radius: 10px; }
+        .hidden { display: none !important; }
+
+        /* Notification Overlay - Always Top */
+        #notify-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(231, 74, 59, 0.98); color: white; display: none; 
+            flex-direction: column; align-items: center; justify-content: center; 
+            z-index: 10000; text-align: center;
+        }
+        #notify-msg { font-size: 50px; font-weight: 900; margin-bottom: 30px; padding: 0 20px; }
+        .ok-btn { background: white; color: var(--danger); padding: 20px 50px; font-size: 25px; border-radius: 50px; border: none; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <audio id="alert-sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
-<div id="alert-bar"></div>
+
+<div id="notify-overlay">
+    <div id="notify-msg"></div>
+    <button class="ok-btn" onclick="closeNotify()">I HAVE CHECKED (ਹਟਾਓ)</button>
+</div>
 
 <div class="container">
     <div id="login-section">
-        <h2>Login</h2>
+        <h2 style="text-align:center;">🔐 Class Pass Login</h2>
         <input type="password" id="pass-input" placeholder="Password">
         <button class="btn btn-blue" onclick="doLogin()">Login</button>
     </div>
 
     <div id="admin-panel" class="hidden">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h3>Admin Panel (Today's Data)</h3>
-            <button class="btn btn-red" onclick="logout()">Logout</button>
+            <h3>🛠 Admin Control</h3>
+            <button class="btn btn-red" onclick="logout()" style="width:auto; padding:5px 15px;">Logout</button>
         </div>
-        
-        <div class="card">
-            <button class="btn btn-green" onclick="downloadTodayCSV()">Download Today's Excel</button>
-            <div id="analytics-box"></div>
+        <div class="card" style="border-left: 5px solid var(--warning);">
+            <h4>🏆 Ranking (Count)</h4>
+            <div id="rank-box">Loading...</div>
+            <button class="btn btn-orange" style="margin-top:15px;" onclick="clearLogs()">🧹 Clear Data</button>
         </div>
-
-        <div class="card">
-            <h4>Manage Students</h4>
-            <input id="nr" placeholder="Roll" style="width:50px">
-            <input id="nn" placeholder="Name">
-            <button class="btn btn-blue" onclick="addS()">Add</button>
-            <table id="list-table">
-                <thead><tr><th>Roll</th><th>Name</th><th>Action</th></tr></thead>
-                <tbody id="list-body"></tbody>
-            </table>
+        <div class="card" style="border-left: 5px solid var(--primary);">
+            <h4>⚙️ Settings & Students</h4>
+            <input id="new-cid" placeholder="Update Class Password">
+            <button class="btn btn-blue" onclick="updateCID()">Update ID</button>
+            <hr>
+            <div style="display:flex; gap:5px; margin-top:10px;">
+                <input id="nr" placeholder="Roll" style="width:20%;"><input id="nn" placeholder="Name" style="width:75%;">
+            </div>
+            <button class="btn btn-blue" onclick="addS()">Add Student</button>
+            <div id="admin-list-box"></div>
         </div>
     </div>
 
     <div id="class-panel" class="hidden">
-        <div style="display:flex; justify-content:space-between;">
-            <h3>Classroom Dashboard</h3>
-            <button class="btn btn-red" onclick="logout()">Logout</button>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>📱 Classroom Dashboard</h3>
+            <button class="btn btn-red" onclick="logout()" style="width:auto; padding:5px 15px;">Exit</button>
         </div>
         <table>
             <thead><tr><th>Roll</th><th>Name</th><th>Action</th></tr></thead>
@@ -84,22 +100,32 @@
 
     function doLogin() {
         const id = document.getElementById('pass-input').value;
-        if(id === "ADMIN123") { localStorage.setItem('user', 'ADMIN'); location.reload(); }
-        else { localStorage.setItem('user', 'CLASS'); location.reload(); }
+        if(id === "ADMIN123") { localStorage.setItem('userRole', 'ADMIN'); location.reload(); }
+        else {
+            db.ref('config/classID').once('value', s => {
+                if(id === (s.val() || "CLASS10")) { localStorage.setItem('userRole', 'CLASS'); location.reload(); }
+                else alert("❌ Wrong Password!");
+            });
+        }
     }
 
-    function logout() { localStorage.removeItem('user'); location.reload(); }
+    function logout() { localStorage.removeItem('userRole'); location.reload(); }
 
     window.onload = () => {
-        const user = localStorage.getItem('user');
-        if(user === 'ADMIN') {
-            document.getElementById('login-section').classList.add('hidden');
+        const role = localStorage.getItem('userRole');
+        document.getElementById('login-section').classList.add('hidden');
+        document.getElementById('admin-panel').classList.add('hidden');
+        document.getElementById('class-panel').classList.add('hidden');
+
+        if(role === 'ADMIN') {
             document.getElementById('admin-panel').classList.remove('hidden');
             renderAdmin();
-        } else if(user === 'CLASS') {
-            document.getElementById('login-section').classList.add('hidden');
+            startAlertListener(); // ਐਡਮਿਨ ਲਈ ਅਲਰਟ ਲਿਸਨਰ ਸ਼ੁਰੂ ਕਰੋ
+        } else if(role === 'CLASS') {
             document.getElementById('class-panel').classList.remove('hidden');
             renderClass();
+        } else {
+            document.getElementById('login-section').classList.remove('hidden');
         }
     };
 
@@ -108,69 +134,66 @@
             let h = '';
             s.forEach(c => {
                 const v = c.val();
+                const isOut = v.status === 'OUT';
                 h += `<tr><td>${v.roll}</td><td><b>${v.name}</b></td>
-                <td><button class="btn ${v.status === 'IN' ? 'btn-red' : 'btn-blue'}" onclick="toggleStatus('${c.key}','${v.status}','${v.name}','${v.roll}')">${v.status === 'IN' ? 'OUT' : 'IN'}</button></td></tr>`;
+                <td><button class="btn ${isOut ? 'btn-green' : 'btn-red'}" onclick="toggle('${c.key}','${v.status}','${v.name}')">${isOut ? 'IN (ਅੰਦਰ)' : 'OUT (ਬਾਹਰ)'}</button></td></tr>`;
             });
             document.getElementById('class-rows').innerHTML = h;
         });
     }
 
-    function toggleStatus(key, status, name, roll) {
+    function toggle(key, status, name) {
         const next = status === 'IN' ? 'OUT' : 'IN';
-        const now = Date.now();
         db.ref('students/' + key).update({ status: next });
-        db.ref('logs').push({ name, roll, action: next, timestamp: now, timeStr: new Date().toLocaleTimeString() });
-        if(next === 'OUT') db.ref('alerts').set({ msg: name + " is OUT", t: now });
+        if(next === 'OUT') {
+            db.ref('logs').push({ name, t: Date.now() });
+            db.ref('alerts').set({ msg: name + " IS OUT", t: Date.now() });
+        }
     }
 
     function renderAdmin() {
-        // Student List
-        db.ref('students').on('value', s => {
-            let h = '';
-            s.forEach(c => {
-                h += `<tr><td>${c.val().roll}</td><td>${c.val().name}</td><td><button onclick="db.ref('students/${c.key}').remove()">Delete</button></td></tr>`;
+        db.ref('logs').on('value', s => {
+            let counts = {};
+            s.forEach(c => { let n = c.val().name; counts[n] = (counts[n] || 0) + 1; });
+            let sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]);
+            let h = '<table><thead><tr><th>Rank</th><th>Name</th><th>Count</th></tr></thead><tbody>';
+            sorted.forEach((item, i) => {
+                h += `<tr><td>${i+1}</td><td><b>${item[0]}</b></td><td><b style="color:red;">${item[1]}</b></td></tr>`;
             });
-            document.getElementById('list-body').innerHTML = h;
+            document.getElementById('rank-box').innerHTML = h + '</tbody></table>';
         });
 
-        // Today's Ranking
-        db.ref('logs').on('value', s => {
-            const today = new Date().toISOString().split('T')[0];
-            let summary = {};
-            s.forEach(child => {
-                const v = child.val();
-                const logDate = new Date(v.timestamp).toISOString().split('T')[0];
-                if(logDate === today && v.action === 'OUT') {
-                    if(!summary[v.roll]) summary[v.roll] = { name: v.name, count: 0 };
-                    summary[v.roll].count += 1;
-                }
+        db.ref('students').on('value', s => {
+            let h = '<table>';
+            s.forEach(c => {
+                h += `<tr><td>${c.val().name}</td><td><button class="btn btn-red" style="padding:5px; width:auto;" onclick="db.ref('students/${c.key}').remove()">Delete</button></td></tr>`;
             });
-            let sorted = Object.values(summary).sort((a,b) => b.count - a.count);
-            let h = '<h4>Today\'s Ranking (by Count)</h4><table><thead><tr><th>Rank</th><th>Name</th><th>Count</th></tr></thead><tbody>';
-            sorted.forEach((st, i) => {
-                h += `<tr><td>${i+1}</td><td>${st.name}</td><td><b>${st.count} times</b></td></tr>`;
-            });
-            document.getElementById('analytics-box').innerHTML = h + '</tbody></table>';
+            document.getElementById('admin-list-box').innerHTML = h + '</table>';
         });
     }
 
-    function downloadTodayCSV() {
-        const today = new Date().toISOString().split('T')[0];
-        db.ref('logs').once('value', s => {
-            let csv = "\ufeffDate,Time,Roll,Name,Action\n";
-            s.forEach(c => {
-                const v = c.val();
-                const logDate = new Date(v.timestamp).toISOString().split('T')[0];
-                if(logDate === today) {
-                    csv += `${logDate},${v.timeStr},${v.roll},${v.name},${v.action}\n`;
-                }
-            });
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(blob);
-            a.download = `Report_${today}.csv`;
-            a.click();
+    function startAlertListener() {
+        db.ref('alerts').on('value', s => {
+            const d = s.val();
+            // ਜੇਕਰ ਅਲਰਟ 1 ਮਿੰਟ ਤੋਂ ਪੁਰਾਣਾ ਨਹੀਂ ਹੈ, ਤਾਂ ਦਿਖਾਓ
+            if(d && (Date.now() - d.t < 60000)) { 
+                const overlay = document.getElementById('notify-overlay');
+                document.getElementById('notify-msg').innerHTML = d.msg;
+                overlay.style.display = 'flex';
+                document.getElementById('alert-sound').play().catch(e => {
+                    console.log("Play blocked, waiting for user click.");
+                });
+            }
         });
+    }
+
+    function closeNotify() { 
+        document.getElementById('notify-overlay').style.display = 'none';
+        db.ref('alerts').set(null); // ਨੋਟੀਫਿਕੇਸ਼ਨ ਹਟਾਉਣ 'ਤੇ ਡਾਟਾਬੇਸ ਤੋਂ ਅਲਰਟ ਕਲੀਅਰ ਕਰੋ
+    }
+
+    function clearLogs() {
+        if(confirm("ਕੀ ਤੁਸੀਂ ਡਾਟਾ ਸਾਫ਼ ਕਰਨਾ ਚਾਹੁੰਦੇ ਹੋ?")) { db.ref('logs').remove(); }
     }
 
     function addS() {
@@ -178,17 +201,10 @@
         if(r && n) db.ref('students').push({ roll: r, name: n, status: 'IN' });
     }
 
-    // Alert Handling
-    db.ref('alerts').on('value', s => {
-        const d = s.val();
-        if(d && (Date.now() - d.t < 10000)) {
-            const bar = document.getElementById('alert-bar');
-            bar.innerHTML = "🚨 " + d.msg;
-            bar.style.display = 'block';
-            document.getElementById('alert-sound').play().catch(e => {});
-            setTimeout(() => { bar.style.display = 'none'; }, 8000);
-        }
-    });
+    function updateCID() {
+        const val = document.getElementById('new-cid').value;
+        if(val) db.ref('config').update({ classID: val }).then(() => alert("✅ Updated!"));
+    }
 </script>
 </body>
 </html>
